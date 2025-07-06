@@ -192,22 +192,19 @@ export function withCache<T extends (...args: any[]) => any>(
   fn: T,
   keyGenerator: (...args: Parameters<T>) => string,
   ttl: number = 5 * 60 * 1000
-): T {
-  return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+): (...args: Parameters<T>) => Promise<ReturnType<T> | null> {
+  return (async (...args: Parameters<T>): Promise<ReturnType<T> | null> => {
     const key = keyGenerator(...args);
-    
     // Try to get from cache first
     const cached = await redisCache.get(key);
-    if (cached !== null) {
+    if (cached !== null && cached !== undefined) {
       return cached;
     }
-
     // If not in cache, execute function and cache result
     const result = await fn(...args);
     await redisCache.set(key, result, ttl);
-    
     return result;
-  }) as T;
+  });
 }
 
 // Cache middleware for Apollo Client

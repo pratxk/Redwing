@@ -8,7 +8,17 @@ const httpLink = createHttpLink({
 });
 
 const authLink = setContext((_, { headers }) => {
-  const token = Cookies.get('auth-token');
+  // Helper function to get cookie value (client-side only)
+  const getCookie = (name: string): string | undefined => {
+    if (typeof window === 'undefined') return undefined;
+    
+    return document.cookie
+      .split('; ')
+      .find(row => row.startsWith(`${name}=`))
+      ?.split('=')[1];
+  };
+
+  const token = getCookie('auth-token');
   return {
     headers: {
       ...headers,

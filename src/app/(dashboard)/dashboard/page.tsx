@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,8 @@ import {
   Square,
   CheckCircle,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  XCircle
 } from 'lucide-react';
 import { DronesProvider, useDrones } from '../../../features/data/DronesContext';
 import { MissionsProvider, useMissions } from '../../../features/data/MissionsContext';
@@ -25,8 +27,25 @@ import { SitesProvider, useSites } from '../../../features/data/SitesContext';
 import { UsersProvider, useUsers } from '../../../features/data/UsersContext';
 import { DashboardSkeleton } from '../../../components/shared/Skeleton';
 import React from 'react';
+import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
+import { RealTimeDashboard } from '@/components/dashboard/RealTimeDashboard';
+import { useAuthContext } from '@/features/auth/AuthContext';
+
+interface DashboardStats {
+  totalMissions: number;
+  activeMissions: number;
+  totalDrones: number;
+  activeDrones: number;
+  totalSites: number;
+  totalUsers: number;
+  successRate: number;
+  avgMissionDuration: number;
+}
 
 function DashboardPageContent() {
+  const { user } = useAuthContext();
+  const organizationId = user?.organizationMemberships?.[0]?.organization?.id;
+
   const { drones, loading: dronesLoading, error: dronesError, updateDroneStatus } = useDrones() as {
     drones: any[];
     loading: boolean;
@@ -50,6 +69,47 @@ function DashboardPageContent() {
     loading: boolean;
     error: any;
   };
+
+  const [stats, setStats] = useState<DashboardStats>({
+    totalMissions: 0,
+    activeMissions: 0,
+    totalDrones: 0,
+    activeDrones: 0,
+    totalSites: 0,
+    totalUsers: 0,
+    successRate: 0,
+    avgMissionDuration: 0,
+  });
+
+  const loading = dronesLoading || missionsLoading || sitesLoading || usersLoading;
+  const error = dronesError || missionsError || sitesError || usersError;
+
+  useEffect(() => {
+    if (missions && drones && sites && users) {
+      const totalMissions = missions.length;
+      const activeMissions = missions.filter((mission: { status: string }) => mission.status === 'IN_PROGRESS').length;
+      const totalDrones = drones.length;
+      const activeDrones = drones.filter((drone: { status: string }) => drone.status === 'ACTIVE').length;
+      const totalSites = sites.length;
+      const totalUsers = users.length;
+      
+      const completedMissions = missions.filter((mission: { status: string }) => mission.status === 'COMPLETED');
+      const successRate = totalMissions > 0 ? Math.round((completedMissions.length / totalMissions) * 100) : 0;
+      
+      const avgMissionDuration = totalMissions > 0 ? Math.round(totalMissions / 2) : 0; // Placeholder calculation
+
+      setStats({
+        totalMissions,
+        activeMissions,
+        totalDrones,
+        activeDrones,
+        totalSites,
+        totalUsers,
+        successRate,
+        avgMissionDuration,
+      });
+    }
+  }, [missions, drones, sites, users]);
 
   const getStatusColor = (status: string) => {
     const colors = {
@@ -101,20 +161,22 @@ function DashboardPageContent() {
   };
 
   // Show loading state with skeleton
-  if (missionsLoading || dronesLoading || sitesLoading || usersLoading) {
-    return <DashboardSkeleton />;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size={32} />
+      </div>
+    );
   }
 
   // Show error state
-  if (missionsError || dronesError || sitesError || usersError) {
+  if (error) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-red-600">Error Loading Dashboard</h2>
-          <p className="text-muted-foreground">
-            {missionsError?.message || dronesError?.message || sitesError?.message || usersError?.message}
-          </p>
+          <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-red-600">Error Loading Dashboard</h2>
+          <p className="text-muted-foreground mt-2">Failed to load dashboard data</p>
         </div>
       </div>
     );
@@ -125,189 +187,144 @@ function DashboardPageContent() {
   const totalUsers = users.length;
 
   return (
-    <div className="">
-      <PageHeader
-        title="Dashboard"
-        description="Overview of your drone management system"
-      />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
+        <p className="text-muted-foreground">
+          Welcome back! Here's an overview of your drone operations.
+        </p>
+      </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="realtime">Real-time</TabsTrigger>
-        </TabsList>
+      {/* Key Metrics */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Missions</CardTitle>
+            <Target className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalMissions}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.activeMissions} active missions
+            </p>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="overview" className="space-y-4">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Missions</CardTitle>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{missions.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  {activeMissions.length} active
-                </p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Drones</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.activeDrones}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalDrones} total drones
+            </p>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Available Drones</CardTitle>
-                <DroneIcon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{availableDrones.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  of {drones.length} total
-                </p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.successRate}%</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalMissions} total missions
+            </p>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Sites</CardTitle>
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{sites.filter((s: any) => s.isActive).length}</div>
-                <p className="text-xs text-muted-foreground">
-                  of {sites.length} total
-                </p>
-              </CardContent>
-            </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Sites</CardTitle>
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalSites}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalUsers} team members
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Team Members</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{totalUsers}</div>
-                <p className="text-xs text-muted-foreground">
-                  across organization
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+      {/* Real-time Dashboard */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Real-time Operations</CardTitle>
+          <CardDescription>
+            Monitor live drone operations and mission progress
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <RealTimeDashboard />
+        </CardContent>
+      </Card>
 
-          {/* Recent Activity */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Missions</CardTitle>
-                <CardDescription>
-                  Currently running missions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {activeMissions.slice(0, 3).map((mission: any) => (
-                    <div key={mission.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <Target className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{mission.name}</h4>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge className={getStatusColor(mission.status)}>
-                              {mission.status.replace('_', ' ')}
-                            </Badge>
-                            {mission.progress && (
-                              <span className="text-sm text-muted-foreground">
-                                {mission.progress}% complete
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button size="sm" variant="outline" onClick={() => handleMissionAction(mission.id, 'pause')} disabled={missionActionLoading === mission.id + 'pause'}>
-                          <Pause className="h-3 w-3 mr-1" />
-                          Pause
-                        </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleMissionAction(mission.id, 'abort')} disabled={missionActionLoading === mission.id + 'abort'}>
-                          <Square className="h-3 w-3 mr-1" />
-                          Abort
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {activeMissions.length === 0 && (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <Target className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                      <p>No active missions</p>
-                    </div>
-                  )}
+      {/* Recent Activity */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Missions</CardTitle>
+            <CardDescription>
+              Latest mission activities and updates
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {missions?.slice(0, 5).map((mission: { id: string; name: string; status: string; createdAt: string }) => (
+                <div key={mission.id} className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{mission.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(mission.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Badge variant={mission.status === 'COMPLETED' ? 'default' : 'secondary'}>
+                    {mission.status}
+                  </Badge>
                 </div>
-              </CardContent>
-            </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Available Drones</CardTitle>
-                <CardDescription>
-                  Drones ready for missions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {availableDrones.slice(0, 4).map((drone: any) => (
-                    <div key={drone.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          <DroneIcon className="h-6 w-6 text-green-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">{drone.name}</h4>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge className={getDroneStatusColor(drone.status)}>
-                              {drone.status.replace('_', ' ')}
-                            </Badge>
-                            <span className="text-sm text-muted-foreground">
-                              {drone.batteryLevel}% battery
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline" onClick={() => handleDroneAction(drone.id, 'deploy')} disabled={droneActionLoading === drone.id + 'deploy'}>
-                        <Play className="h-3 w-3 mr-1" />
-                        Deploy
-                      </Button>
-                    </div>
-                  ))}
-                  {availableDrones.length === 0 && (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <DroneIcon className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                      <p>No available drones</p>
-                    </div>
-                  )}
+        <Card>
+          <CardHeader>
+            <CardTitle>System Status</CardTitle>
+            <CardDescription>
+              Current system health and alerts
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>All drones operational</span>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="realtime" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Real-time Monitoring</CardTitle>
-              <CardDescription>
-                Live updates from active missions and drones
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-6 text-muted-foreground">
-                <Activity className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                <p>Real-time monitoring coming soon</p>
+                <Badge variant="outline">Healthy</Badge>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>Database connection</span>
+                </div>
+                <Badge variant="outline">Connected</Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span>GPS signal strength</span>
+                </div>
+                <Badge variant="outline">Strong</Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

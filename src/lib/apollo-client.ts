@@ -130,7 +130,7 @@ function createApolloClient() {
   });
 }
 
-export function initializeApollo(initialState = null) {
+export function initializeApollo(initialState: any = null) {
   const _apolloClient = apolloClient ?? createApolloClient();
 
   // If your page has Next.js data fetching methods that use Apollo Client,
@@ -140,7 +140,7 @@ export function initializeApollo(initialState = null) {
     const existingCache = _apolloClient.extract();
 
     // Merge the existing cache into data passed from getStaticProps/getServerSideProps
-    const data = { ...existingCache, ...initialState };
+    const data = { ...existingCache, ...(initialState as object) };
 
     // Restore the cache with the merged data
     _apolloClient.cache.restore(data);

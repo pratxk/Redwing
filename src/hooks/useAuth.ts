@@ -68,7 +68,7 @@ export function useAuth() {
   }, []);
 
   // GraphQL queries and mutations
-  const { data: meData, loading: meLoading, refetch: refetchMe, error: meError } = useQuery<MeResponse>(ME_QUERY, {
+  const { loading: meLoading, refetch: refetchMe, error: meError } = useQuery<MeResponse>(ME_QUERY, {
     onCompleted: (data) => {
       if (data?.me) {
         setUser(data.me);

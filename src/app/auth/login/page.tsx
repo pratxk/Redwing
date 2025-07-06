@@ -108,7 +108,7 @@ function LoginForm() {
 
           <div className="mt-4 text-center text-sm text-muted-foreground">
             <p>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Button variant="link" className="p-0 h-auto">
                 Contact your administrator
               </Button>
