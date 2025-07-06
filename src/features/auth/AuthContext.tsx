@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   isClient: boolean;
+  hasValidToken: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; user?: User; error?: string }>;
   logout: () => void;
   checkAuth: () => Promise<void>;
@@ -17,7 +18,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { user, loading, login, logout, checkAuth, isClient } = useAuth();
+  const { user, loading, login, logout, checkAuth, isClient, hasValidToken } = useAuth();
 
   useEffect(() => {
     checkAuth();
@@ -32,7 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, isClient }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, isClient, hasValidToken }}>
       {children}
     </AuthContext.Provider>
   );

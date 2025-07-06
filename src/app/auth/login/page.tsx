@@ -122,7 +122,7 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <AuthGuard requireAuth={false} redirectTo="/dashboard">
+    <AuthGuard requireAuth={false}>
       <LoginForm />
     </AuthGuard>
   );

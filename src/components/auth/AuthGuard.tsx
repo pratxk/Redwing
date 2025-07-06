@@ -8,28 +8,33 @@ import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 interface AuthGuardProps {
   children: React.ReactNode;
   requireAuth?: boolean;
-  redirectTo?: string;
 }
 
-export function AuthGuard({ 
-  children, 
-  requireAuth = true, 
-  redirectTo = '/auth/login' 
-}: AuthGuardProps) {
-  const { user, loading, isClient } = useAuthContext();
+export function AuthGuard({ children, requireAuth = true }: AuthGuardProps) {
+  const { user, loading, hasValidToken, isClient } = useAuthContext();
   const router = useRouter();
 
   useEffect(() => {
     if (!isClient || loading) return;
 
-    if (requireAuth && !user) {
-      // User is not authenticated but auth is required
-      router.push(redirectTo);
-    } else if (!requireAuth && user) {
-      // User is authenticated but auth is not required (e.g., login page)
-      router.push('/dashboard');
+    if (requireAuth) {
+      // If user is not authenticated and we have a valid token, wait for auth check
+      if (!user && hasValidToken) {
+        // Token exists but user data is still loading, wait
+        return;
+      }
+      
+      // If no user and no valid token, redirect to login
+      if (!user && !hasValidToken) {
+        router.push('/auth/login');
+      }
+    } else {
+      // For public routes (like login), redirect authenticated users to dashboard
+      if (user && hasValidToken) {
+        router.push('/dashboard');
+      }
     }
-  }, [user, loading, isClient, requireAuth, redirectTo, router]);
+  }, [user, loading, hasValidToken, isClient, requireAuth, router]);
 
   // Show loading spinner while checking authentication
   if (loading || !isClient) {
@@ -40,16 +45,23 @@ export function AuthGuard({
     );
   }
 
-  // If auth is required and user is not authenticated, don't render children
-  if (requireAuth && !user) {
-    return null;
+  // For protected routes, don't render children if not authenticated
+  if (requireAuth && !user && !hasValidToken) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size={32} />
+      </div>
+    );
   }
 
-  // If auth is not required and user is authenticated, don't render children
-  if (!requireAuth && user) {
-    return null;
+  // For public routes, don't render children if authenticated
+  if (!requireAuth && user && hasValidToken) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingSpinner size={32} />
+      </div>
+    );
   }
 
-  // Render children if authentication state matches requirements
   return <>{children}</>;
 } 

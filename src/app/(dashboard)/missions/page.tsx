@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -468,6 +469,11 @@ function MissionsPageContent() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
+                      <Link href={`/missions/${mission.id}`}>
+                        <Button size="sm" variant="outline">
+                          View Details
+                        </Button>
+                      </Link>
                       {getMissionActions(mission)}
                     </div>
                   </div>
@@ -513,6 +519,11 @@ function MissionsPageContent() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <Link href={`/missions/${mission.id}`}>
+                          <Button size="sm" variant="outline">
+                            View Details
+                          </Button>
+                        </Link>
                         {getMissionActions(mission)}
                       </div>
                     </div>
@@ -557,6 +568,11 @@ function MissionsPageContent() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
+                        <Link href={`/missions/${mission.id}`}>
+                          <Button size="sm" variant="outline">
+                            View Details
+                          </Button>
+                        </Link>
                         {getMissionActions(mission)}
                       </div>
                     </div>
@@ -670,9 +686,11 @@ function MissionsPageContent() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Button size="sm" variant="outline">
-                          View Details
-                        </Button>
+                        <Link href={`/missions/${mission.id}`}>
+                          <Button size="sm" variant="outline">
+                            View Details
+                          </Button>
+                        </Link>
                         {getMissionActions(mission)}
                       </div>
                     </div>

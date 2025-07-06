@@ -29,12 +29,18 @@ function createApolloClient() {
     };
   });
 
-  const errorLink = onError(({ graphQLErrors, networkError }) => {
+  const errorLink = onError(({ graphQLErrors, networkError, operation }) => {
     if (graphQLErrors) {
       graphQLErrors.forEach(({ message, locations, path }) => {
-        console.error(
-          `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
-        );
+        // Don't log authentication errors for the ME query when there's no token
+        const isMeQuery = operation.operationName === 'Me';
+        const isAuthError = message.includes('Not authenticated') || message.includes('Unauthorized');
+        
+        if (!(isMeQuery && isAuthError)) {
+          console.error(
+            `[GraphQL error]: Message: ${message}, Location: ${locations}, Path: ${path}`
+          );
+        }
       });
     }
 

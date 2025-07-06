@@ -22,6 +22,11 @@ interface MapProps {
   missions?: MissionData[];
   sites?: SiteMarker[];
   onMarkerClick?: (id: string, type: 'drone' | 'mission' | 'site') => void;
+  // WebSocket real-time tracking props
+  plannedPolyline?: Array<{ lat: number; lng: number }>;
+  actualPositions?: Array<{ lat: number; lng: number; timestamp: number }>;
+  currentPosition?: { lat: number; lng: number; timestamp: number } | null;
+  showRealTimeTracking?: boolean;
 }
 
 interface DroneMarker {
@@ -160,11 +165,15 @@ export function Map({
   missions = [],
   sites = [],
   onMarkerClick,
+  plannedPolyline = [],
+  actualPositions = [],
+  currentPosition = null,
+  showRealTimeTracking = false,
 }: MapProps) {
   const mapRef = useRef<L.Map | null>(null);
 
   useEffect(() => {
-    if (mapRef.current && (drones.length > 0 || missions.length > 0 || sites.length > 0)) {
+    if (mapRef.current && (drones.length > 0 || missions.length > 0 || sites.length > 0 || plannedPolyline.length > 0 || actualPositions.length > 0)) {
       const bounds = L.latLngBounds([]);
       
       drones.forEach(drone => {
@@ -187,12 +196,27 @@ export function Map({
       sites.forEach(site => {
         bounds.extend([site.latitude, site.longitude]);
       });
+
+      // Add planned polyline points to bounds
+      plannedPolyline.forEach(point => {
+        bounds.extend([point.lat, point.lng]);
+      });
+
+      // Add actual positions to bounds
+      actualPositions.forEach(pos => {
+        bounds.extend([pos.lat, pos.lng]);
+      });
+
+      // Add current position to bounds
+      if (currentPosition) {
+        bounds.extend([currentPosition.lat, currentPosition.lng]);
+      }
       
       if (bounds.isValid()) {
         mapRef.current.fitBounds(bounds, { padding: [20, 20] });
       }
     }
-  }, [drones, missions, sites]);
+  }, [drones, missions, sites, plannedPolyline, actualPositions, currentPosition]);
 
   return (
     <div className={`w-full ${className}`} style={{ height }}>
@@ -206,6 +230,44 @@ export function Map({
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        
+        {/* Real-time Tracking Paths */}
+        {showRealTimeTracking && (
+          <>
+            {/* Planned Path (from WebSocket or mission waypoints) */}
+            {plannedPolyline.length > 1 && (
+              <Polyline
+                positions={plannedPolyline.map(point => [point.lat, point.lng])}
+                color="#6b7280"
+                weight={3}
+                opacity={0.6}
+                dashArray="10, 5"
+              />
+            )}
+            
+            {/* Actual Path (real-time from WebSocket) */}
+            {actualPositions.length > 1 && (
+              <Polyline
+                positions={actualPositions.map(pos => [pos.lat, pos.lng])}
+                color="#3b82f6"
+                weight={4}
+                opacity={0.8}
+              />
+            )}
+            
+            {/* Current Position Marker */}
+            {currentPosition && (
+              <Circle
+                center={[currentPosition.lat, currentPosition.lng]}
+                radius={30}
+                color="#ef4444"
+                fillColor="#ef4444"
+                fillOpacity={0.6}
+                weight={2}
+              />
+            )}
+          </>
+        )}
         
         {/* Site Markers */}
         {sites.map((site) => (

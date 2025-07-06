@@ -60,6 +60,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
+  const [hasValidToken, setHasValidToken] = useState(false);
 
   // Ensure we're on the client side
   useEffect(() => {
@@ -71,8 +72,10 @@ export function useAuth() {
     onCompleted: (data) => {
       if (data?.me) {
         setUser(data.me);
+        setHasValidToken(true);
       } else {
         setUser(null);
+        setHasValidToken(false);
         removeCookie('auth-token');
       }
       setLoading(false);
@@ -80,10 +83,11 @@ export function useAuth() {
     onError: (error) => {
       console.error('Auth check failed:', error);
       setUser(null);
+      setHasValidToken(false);
       removeCookie('auth-token');
       setLoading(false);
     },
-    skip: !isClient,
+    skip: !isClient || !hasValidToken, // Skip if no valid token
     fetchPolicy: 'network-only', // Always fetch from network to validate token
   });
 
@@ -102,6 +106,7 @@ export function useAuth() {
         setCookie('auth-token', token, 7); // 7 days
         
         setUser(user);
+        setHasValidToken(true);
         return { success: true, user };
       }
       
@@ -117,6 +122,7 @@ export function useAuth() {
   const logout = useCallback(() => {
     removeCookie('auth-token');
     setUser(null);
+    setHasValidToken(false);
     if (typeof window !== 'undefined') {
       window.location.href = '/auth/login';
     }
@@ -126,22 +132,31 @@ export function useAuth() {
     if (!isClient) return;
     
     const token = getCookie('auth-token');
+    console.log('🔍 Checking auth - Token exists:', !!token);
     
     if (token && isTokenValid(token)) {
+      console.log('✅ Token is valid, fetching user data...');
+      setHasValidToken(true);
       try {
-        // Always make API call to validate token
+        // Make API call to validate token and get user data
         await refetchMe();
       } catch (error) {
-        console.error('Token validation failed:', error);
+        console.error('❌ Token validation failed:', error);
         setUser(null);
+        setHasValidToken(false);
         removeCookie('auth-token');
       }
-    } else if (token && !isTokenValid(token)) {
-      // Token exists but is invalid, remove it
-      removeCookie('auth-token');
-      setUser(null);
     } else {
+      // No token or invalid token
+      if (token && !isTokenValid(token)) {
+        console.log('⚠️ Token exists but is invalid, removing...');
+        // Token exists but is invalid, remove it
+        removeCookie('auth-token');
+      } else {
+        console.log('ℹ️ No token found');
+      }
       setUser(null);
+      setHasValidToken(false);
     }
     setLoading(false);
   }, [refetchMe, isClient]);
@@ -157,6 +172,7 @@ export function useAuth() {
   useEffect(() => {
     if (meError) {
       setUser(null);
+      setHasValidToken(false);
       removeCookie('auth-token');
     }
   }, [meError]);
@@ -168,5 +184,6 @@ export function useAuth() {
     logout,
     checkAuth,
     isClient,
+    hasValidToken,
   };
 } 
